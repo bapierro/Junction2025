@@ -70,7 +70,7 @@ export function StoryWallScreen({ onViewStory, onBack }: StoryWallScreenProps) {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-amber-800/70">
-                {story.ageRange}-year-old from {story.city}
+                {(story.ageRange ? `${story.ageRange}-year-old` : 'Storyteller')} from {story.city || 'their community'}
               </span>
               <div className="flex gap-2">
                 {story.tags.map(tag => (

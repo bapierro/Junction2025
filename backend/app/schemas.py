@@ -100,3 +100,11 @@ class SimilarStory(BaseModel):
 
 class SimilarStoriesResponse(BaseModel):
     stories: List[SimilarStory]
+
+
+class TranscriptStoryRequest(BaseModel):
+    transcript: str = Field(min_length=1)
+    title: Optional[str] = None
+    age_range: Optional[str] = None
+    city: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)

@@ -31,6 +31,9 @@ Every setting is prefixed with `STORYCIRCLE_` (see `app/config.py`). The most im
 - `STORYCIRCLE_ELEVENLABS_API_KEY` – **fill in your team key** to enable live transcription/tts; blank uses deterministic stubs.
 - `STORYCIRCLE_ELEVENLABS_VOICE_ID` – optional default voice for `/stories/{id}/tts` (future use).
 - `STORYCIRCLE_ELEVENLABS_AGENT_ID` – agent ID from the ElevenLabs dashboard; required for generating WebRTC conversation tokens.
+- `STORYCIRCLE_OPENAI_API_KEY` – OpenAI key used by the Responses API to turn transcripts into polished stories. If empty, the service falls back to the raw transcript.
+- `STORYCIRCLE_OPENAI_MODEL` – defaults to `gpt-5-mini`; override if you want another Responses-compatible model.
+- `STORYCIRCLE_OPENAI_REASONING_EFFORT` – reasoning effort passed to the Responses API (`minimal`, `low`, `medium`, `high`).
 - `STORYCIRCLE_ADMIN_TOKEN` – set to any secret; pass via `x-admin-token` header for moderation endpoints.
 - `STORYCIRCLE_SHARE_TOKEN_SECRET` – tweak for production randomness if you persist tokens externally.
 
@@ -66,6 +69,7 @@ The suite spins up an in-memory SQLite database, fakes audio uploads, verifies t
 ## Conversational AI Helpers
 
 - `POST /conversations/token` proxies ElevenLabs’ `convai/conversation/token` API and returns a short-lived token for the React client to open a WebRTC session. This endpoint requires both `STORYCIRCLE_ELEVENLABS_API_KEY` and `STORYCIRCLE_ELEVENLABS_AGENT_ID`. When the API key is missing the endpoint returns a placeholder token (`dev-token-*`) so UI code can surface a configuration warning without crashing.
+- `POST /stories/from-transcript` accepts a live-agent transcript, optionally tags/metadata, calls the OpenAI Responses API with `gpt-5-mini`, and persists the resulting narrative + raw transcript as a private story. This keeps transcripts server-side and reuses the existing Story model immediately.
 
 ## ElevenLabs Integration Notes
 

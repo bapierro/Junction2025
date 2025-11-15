@@ -19,6 +19,8 @@ export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryD
   });
 
   const story = MOCK_STORIES.find(s => s.id === storyId) || MOCK_STORIES[0];
+  const ageDescriptor = story.ageRange ? `${story.ageRange}-year-old` : 'Storyteller';
+  const cityDescriptor = story.city || 'their community';
 
   const handleReaction = (type: 'moved' | 'thankYou' | 'favorite') => {
     setReactions(prev => ({ ...prev, [type]: !prev[type] }));
@@ -48,7 +50,7 @@ export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryD
         <div>
           <h1 className="text-amber-900 mb-3">{story.title}</h1>
           <p className="text-amber-800/70">
-            {story.ageRange}-year-old from {story.city}
+            {ageDescriptor} from {cityDescriptor}
           </p>
           <div className="flex gap-2 mt-3">
             {story.tags.map((tag: string) => (

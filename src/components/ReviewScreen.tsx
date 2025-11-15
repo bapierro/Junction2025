@@ -11,30 +11,49 @@ interface ReviewScreenProps {
   onSave: (story: Partial<Story>, shareType: 'private' | 'link' | 'public') => void;
   onCancel: () => void;
   onUpdateStory: (story: Partial<Story>) => void;
+  isStoryGenerating: boolean;
+  storyGenerationError: string | null;
+  onRetryGenerate: () => void;
 }
 
 const AVAILABLE_TAGS = ['Childhood', 'Love', 'Work', 'Migration', 'Family', 'Adventure', 'Wisdom'];
 
-export function ReviewScreen({ story, onSave, onCancel, onUpdateStory }: ReviewScreenProps) {
-  const [title, setTitle] = useState(story?.title || 'My Story');
-  const [transcript, setTranscript] = useState(story?.transcript || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>(story?.tags || []);
+export function ReviewScreen({
+  story,
+  onSave,
+  onCancel,
+  onUpdateStory,
+  isStoryGenerating,
+  storyGenerationError,
+  onRetryGenerate
+}: ReviewScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+  if (!story) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-amber-900">
+        <p className="mb-6 text-center">No story to review yet.</p>
+        <Button onClick={onCancel} className="bg-amber-600 hover:bg-amber-700 text-white">
+          Go Back
+        </Button>
+      </div>
     );
+  }
+
+  const title = story.title || 'My Story';
+  const transcript = story.transcript || '';
+  const selectedTags = story.tags || [];
+  const rawTranscript = story.rawTranscript;
+
+  const toggleTag = (tag: string) => {
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter(t => t !== tag)
+      : [...selectedTags, tag];
+    onUpdateStory({ tags: next });
   };
 
   const handleSave = (shareType: 'private' | 'link' | 'public') => {
-    const updatedStory: Partial<Story> = {
-      ...story,
-      title,
-      transcript,
-      tags: selectedTags
-    };
-    onSave(updatedStory, shareType);
+    onSave({ ...story }, shareType);
   };
 
   return (
@@ -58,7 +77,7 @@ export function ReviewScreen({ story, onSave, onCancel, onUpdateStory }: ReviewS
           <label className="block text-amber-900 mb-2">Story Title</label>
           <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => onUpdateStory({ title: e.target.value })}
             className="h-14 bg-white border-2 border-amber-200 focus:border-amber-600"
             placeholder="Give your story a title"
           />
@@ -90,16 +109,41 @@ export function ReviewScreen({ story, onSave, onCancel, onUpdateStory }: ReviewS
           </div>
         </div>
 
+        {isStoryGenerating && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl">
+            Crafting your StoryCircle narrative…
+          </div>
+        )}
+        {storyGenerationError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex flex-col gap-3">
+            <p>{storyGenerationError}</p>
+            <Button variant="outline" onClick={onRetryGenerate} className="w-full border-red-300 text-red-800">
+              Try generating again
+            </Button>
+          </div>
+        )}
+
         {/* Transcript */}
         <div>
           <label className="block text-amber-900 mb-2">Your Story</label>
           <Textarea
             value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
+            onChange={(e) => onUpdateStory({ transcript: e.target.value })}
             className="min-h-[200px] bg-white border-2 border-amber-200 focus:border-amber-600 resize-none"
             placeholder="Your story transcript will appear here..."
           />
         </div>
+
+        {rawTranscript && (
+          <div>
+            <label className="block text-amber-900 mb-2">Original Conversation Transcript</label>
+            <Textarea
+              value={rawTranscript}
+              readOnly
+              className="min-h-[160px] bg-white border-2 border-amber-100 text-amber-700"
+            />
+          </div>
+        )}
 
         {/* Tags */}
         <div>

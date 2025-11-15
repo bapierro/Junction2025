@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = ""
     elevenlabs_agent_id: str = "agent_5601ka2ded7yfj4b3dv8v5k32srr"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-5-mini"
+    openai_reasoning_effort: str = "low"
     admin_token: str = ""  # simple hackathon auth
     share_token_secret: str = "change-me"
     base_url: str = "http://localhost:8000"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import textwrap
 from pathlib import Path
 from typing import List, Optional
 
@@ -20,9 +21,11 @@ from ..schemas import (
     StoryDetail,
     StoryRead,
     StoryUpdate,
+    TranscriptStoryRequest,
     TranscriptionResponse,
 )
 from ..services.elevenlabs import get_elevenlabs_service
+from ..services.openai_story import get_openai_story_service
 from ..services.security import hash_client_token, make_share_token, record_consent
 from ..services.storage import ensure_storage_root, resolve_audio_path, save_audio_file
 
@@ -58,6 +61,41 @@ async def create_story(
         age_range=age_range,
         city=city,
         tags=_parse_tags(tags),
+        share_token=make_share_token(),
+    )
+    session.add(story)
+    session.commit()
+    session.refresh(story)
+    return StoryDetail.model_validate(story)
+
+
+@router.post("/from-transcript", response_model=StoryDetail, status_code=status.HTTP_201_CREATED)
+async def create_story_from_transcript(
+    payload: TranscriptStoryRequest,
+    session: Session = Depends(get_session),
+    openai_story_service=Depends(get_openai_story_service),
+) -> StoryDetail:
+    transcript = (payload.transcript or "").strip()
+    if not transcript:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transcript is required")
+
+    try:
+        story_text = await openai_story_service.generate_story(transcript)
+    except ValueError as exc:  # validation failures surface to client
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - upstream errors
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to generate story") from exc
+
+    abstract = textwrap.shorten(story_text, width=200, placeholder="...") if story_text else None
+    story = Story(
+        title=(payload.title or "Untitled Story").strip() or "Untitled Story",
+        text=story_text,
+        raw_transcript=transcript,
+        abstract=abstract,
+        age_range=payload.age_range,
+        city=payload.city,
+        tags=payload.tags or [],
+        audio_url="live-agent",
         share_token=make_share_token(),
     )
     session.add(story)
