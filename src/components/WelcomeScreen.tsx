@@ -1,64 +1,117 @@
-import { Mic, Headphones, Settings } from 'lucide-react';
-import { Button } from './ui/button';
+import { BookOpen, Headphones, Speech } from 'lucide-react';
+import { motion } from 'motion/react';
+import { AIAssistant } from './AIAssistant';
 
 interface WelcomeScreenProps {
   onTellStory: () => void;
   onListenToStories: () => void;
+  onMyStories: () => void;
   onOpenSettings: () => void;
+  isFirstBoot: boolean;
+  hasAccount: boolean;
+  onCreateAccount: () => void;
+  onSkipAccount: () => void;
 }
 
-export function WelcomeScreen({ onTellStory, onListenToStories, onOpenSettings }: WelcomeScreenProps) {
+export function WelcomeScreen({ 
+  onTellStory, 
+  onListenToStories, 
+  onMyStories,
+  onOpenSettings,
+  isFirstBoot,
+  hasAccount,
+  onCreateAccount,
+  onSkipAccount
+}: WelcomeScreenProps) {
+  const handleTellStory = () => {
+    onTellStory();
+  };
+
   return (
-    <div className="min-h-screen flex flex-col p-6 relative">
-      {/* Settings Icon */}
-      <div className="absolute top-6 right-6">
+    <div
+      className="min-h-screen flex flex-col p-6 relative"
+      style={{ background: 'linear-gradient(180deg, #FFF8ED 0%, #FFEFD6 48%, #FFE5C2 100%)' }}
+    >
+      <div className="absolute bottom-6 right-6 z-10">
         <button
           onClick={onOpenSettings}
-          className="p-3 rounded-full bg-white/80 hover:bg-white shadow-md transition-colors"
-          aria-label="Settings"
+          className="px-5 py-3 rounded-full bg-white/90 hover:bg-white shadow-[0_8px_18px_rgba(209,137,52,0.25)] transition-colors"
+          aria-label="My Personal Information"
         >
-          <Settings className="w-7 h-7 text-amber-800" />
+          <span className="text-[#6E3410] tracking-[0.05em] text-sm font-semibold">MY PERSONAL INFORMATION</span>
         </button>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
-        {/* App Title */}
-        <div className="text-center mb-12">
-          <h1 className="text-amber-900 mb-3">StoryCircle</h1>
-          <p className="text-amber-800/80">
-            Share your life's precious moments
+        <div className="text-center mb-8">
+          <h1 className="text-[#6E3410] mb-3 text-4xl font-semibold tracking-wide">GoldenTales</h1>
+          <p className="text-[#A86832] text-lg">
+            Share your life&apos;s precious moments
           </p>
         </div>
 
-        {/* Illustration */}
-        <div className="mb-12 w-48 h-48 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center shadow-lg">
-          <div className="w-32 h-32 rounded-full bg-white/40 flex items-center justify-center">
-            <Mic className="w-16 h-16 text-amber-900" />
-          </div>
-        </div>
+        <AIAssistant
+          isFirstBoot={isFirstBoot}
+          hasAccount={hasAccount}
+          onCreateAccount={onCreateAccount}
+          onSkipAccount={onSkipAccount}
+          onStartStory={handleTellStory}
+          onListenToStories={onListenToStories}
+        />
 
-        {/* Action Buttons */}
-        <div className="w-full space-y-5">
-          <Button
-            onClick={onTellStory}
-            size="lg"
-            className="w-full h-20 bg-amber-600 hover:bg-amber-700 text-white shadow-xl"
+        <motion.div 
+          className="w-full space-y-6 mb-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <button
+            type="button"
+            onClick={handleTellStory}
+            className="w-full flex items-center justify-center gap-4 text-white text-xl font-bold tracking-[0.08em] uppercase"
+            style={{
+              background: 'linear-gradient(110deg, #FDB54A 0%, #FB8D1A 58%, #E25F02 100%)',
+              height: '90px',
+              borderRadius: '45px',
+              boxShadow: '0px 22px 36px rgba(213, 111, 34, 0.45)'
+            }}
           >
-            <Mic className="w-8 h-8 mr-3" />
-            <span>Tell a Story</span>
-          </Button>
+            <Speech className="w-8 h-8" />
+            <span>TELL ME A STORY</span>
+          </button>
 
-          <Button
+          <button
+            type="button"
             onClick={onListenToStories}
-            size="lg"
-            variant="outline"
-            className="w-full h-20 bg-white border-2 border-amber-600 text-amber-900 hover:bg-amber-50 shadow-lg"
+            className="w-full flex items-center justify-center gap-4 text-[#6E3410] text-xl font-bold tracking-[0.06em]"
+            style={{
+              height: '90px',
+              borderRadius: '45px',
+              border: '4px solid #F5A93C',
+              backgroundColor: '#FFFFFF',
+              boxShadow: '0px 16px 30px rgba(203, 140, 67, 0.2)'
+            }}
           >
-            <Headphones className="w-8 h-8 mr-3" />
-            <span>Listen to Stories</span>
-          </Button>
-        </div>
+            <Headphones className="w-8 h-8" />
+            <span>LISTEN TO STORIES</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onMyStories}
+            className="w-full flex items-center justify-center gap-4 text-[#6E3410] text-xl font-bold tracking-[0.06em]"
+            style={{
+              height: '90px',
+              borderRadius: '45px',
+              border: '4px solid #F5A93C',
+              backgroundColor: '#FFFFFF',
+              boxShadow: '0px 16px 30px rgba(203, 140, 67, 0.2)'
+            }}
+          >
+            <BookOpen className="w-8 h-8" />
+            <span>MY STORIES</span>
+          </button>
+        </motion.div>
       </div>
     </div>
   );

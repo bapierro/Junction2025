@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { ArrowLeft, Play, Pause, Heart, HandHeart, Star } from 'lucide-react';
+import { Play, Pause, Heart, HandHeart, Star } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { MOCK_STORIES } from '../lib/mockData';
+import { MOCK_STORIES, MY_STORIES } from '../lib/mockData';
 
 interface StoryDetailScreenProps {
   storyId: string | null;
   onBack: () => void;
   onListenToSimilar: (storyId: string) => void;
+  onHome?: () => void;
 }
 
-export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryDetailScreenProps) {
+export function StoryDetailScreen({ storyId, onBack, onListenToSimilar, onHome }: StoryDetailScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [reactions, setReactions] = useState({
     moved: false,
@@ -18,7 +19,8 @@ export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryD
     favorite: false
   });
 
-  const story = MOCK_STORIES.find(s => s.id === storyId) || MOCK_STORIES[0];
+  const allStories = [...MOCK_STORIES, ...MY_STORIES];
+  const story = allStories.find((s) => s.id === storyId) || allStories[0];
   const ageDescriptor = story.ageRange ? `${story.ageRange}-year-old` : 'Storyteller';
   const cityDescriptor = story.city || 'their community';
 
@@ -27,28 +29,41 @@ export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryD
   };
 
   const getSimilarStoryId = () => {
-    const otherStories = MOCK_STORIES.filter(s => s.id !== storyId);
+    const otherStories = allStories.filter((s) => s.id !== storyId);
     return otherStories[Math.floor(Math.random() * otherStories.length)]?.id || '2';
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-6">
-      {/* Header */}
-      <div className="flex items-center mb-6">
-        <button
-          onClick={onBack}
-          className="p-3 rounded-full hover:bg-white/60 transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="w-7 h-7 text-amber-900" />
-        </button>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-amber-50 to-orange-50">
+      <div className="bg-white shadow-sm border-b-2 border-amber-200 p-4">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <button
+            onClick={onHome ?? onBack}
+            className="px-4 py-3 rounded-full bg-amber-100 hover:bg-amber-200 transition-colors shadow-md"
+            aria-label="Go back"
+          >
+            <span className="text-amber-900 text-sm font-semibold">GO BACK</span>
+          </button>
+          <h1 className="text-amber-900">Story</h1>
+          {onHome ? (
+            <button
+              onClick={onBack}
+              className="px-4 py-3 rounded-full bg-amber-100 hover:bg-amber-200 transition-colors shadow-md"
+              aria-label="See more stories"
+            >
+              <span className="text-amber-900 text-sm font-semibold">SEE MORE STORIES</span>
+            </button>
+          ) : (
+            <div className="w-28" />
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 max-w-2xl mx-auto w-full space-y-6 pb-6">
-        {/* Title */}
-        <div>
-          <h1 className="text-amber-900 mb-3">{story.title}</h1>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-2xl mx-auto w-full space-y-6 pb-6">
+          {/* Title */}
+          <div>
+            <h1 className="text-amber-900 mb-3">{story.title}</h1>
           <p className="text-amber-800/70">
             {ageDescriptor} from {cityDescriptor}
           </p>
@@ -153,14 +168,15 @@ export function StoryDetailScreen({ storyId, onBack, onListenToSimilar }: StoryD
           </div>
         </div>
 
-        {/* Similar Story Button */}
-        <Button
-          onClick={() => onListenToSimilar(getSimilarStoryId())}
-          size="lg"
-          className="w-full h-16 bg-amber-600 hover:bg-amber-700 text-white shadow-lg"
-        >
-          Listen to Similar Story
-        </Button>
+          {/* Similar Story Button */}
+          <Button
+            onClick={() => onListenToSimilar(getSimilarStoryId())}
+            size="lg"
+            className="w-full h-20 bg-amber-600 hover:bg-amber-700 text-white shadow-lg"
+          >
+            Listen to Similar Story
+          </Button>
+        </div>
       </div>
     </div>
   );

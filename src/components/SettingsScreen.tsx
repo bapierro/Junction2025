@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User, Mail } from 'lucide-react';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import type { UserSettings } from '../App';
+import type { UserSettings, UserAccount } from '../App';
 
 interface SettingsScreenProps {
   settings: UserSettings;
+  account: UserAccount;
   onSave: (settings: UserSettings) => void;
   onCancel: () => void;
+  onCreateAccount?: () => void;
 }
 
 const AGE_RANGES = [
@@ -22,7 +24,7 @@ const AGE_RANGES = [
   '90+'
 ];
 
-export function SettingsScreen({ settings, onSave, onCancel }: SettingsScreenProps) {
+export function SettingsScreen({ settings, account, onSave, onCancel, onCreateAccount }: SettingsScreenProps) {
   const [defaultAnonymous, setDefaultAnonymous] = useState(settings.defaultAnonymous);
   const [ageRange, setAgeRange] = useState(settings.ageRange);
   const [city, setCity] = useState(settings.city);
@@ -49,8 +51,37 @@ export function SettingsScreen({ settings, onSave, onCancel }: SettingsScreenPro
         <h2 className="flex-1 text-center text-amber-900 -ml-12">Settings</h2>
       </div>
 
-      {/* Content */}
       <div className="flex-1 max-w-md mx-auto w-full space-y-6">
+        {/* Account Info */}
+        <div className="bg-white rounded-xl p-5 shadow-md border-2 border-amber-200">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <User className="w-6 h-6 text-amber-900" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-amber-900 mb-1">Account Status</h3>
+              <p className="text-amber-800/70">
+                {account.isAnonymous ? 'Anonymous User' : 'Registered Account'}
+              </p>
+            </div>
+          </div>
+          {!account.isAnonymous && account.email ? (
+            <div className="flex items-center gap-3 pt-3 border-t border-amber-200">
+              <Mail className="w-5 h-5 text-amber-700" />
+              <p className="text-amber-800">{account.email}</p>
+            </div>
+          ) : null}
+          {account.isAnonymous && onCreateAccount ? (
+            <Button
+              onClick={onCreateAccount}
+              variant="outline"
+              className="w-full mt-4 h-12 border-2 border-amber-500 text-amber-900 hover:bg-amber-50"
+            >
+              Create an Account
+            </Button>
+          ) : null}
+        </div>
+
         {/* Anonymous Toggle */}
         <div className="bg-white rounded-xl p-5 shadow-md border-2 border-amber-200">
           <div className="flex items-center justify-between gap-4">

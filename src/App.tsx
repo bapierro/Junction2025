@@ -44,16 +44,60 @@ export interface UserSettings {
   city: string;
 }
 
+export interface UserAccount {
+  id: string;
+  email?: string;
+  isAnonymous: boolean;
+  createdAt: Date;
+}
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
+  const [navigationHistory, setNavigationHistory] = useState<Screen[]>(['welcome']);
   const [currentStory, setCurrentStory] = useState<Partial<Story> | null>(null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [isStoryGenerating, setIsStoryGenerating] = useState(false);
   const [storyGenerationError, setStoryGenerationError] = useState<string | null>(null);
+  const [storyWallTab, setStoryWallTab] = useState<'my-stories' | 'public-stories'>('public-stories');
+  const [lastShareLink, setLastShareLink] = useState<string | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings>({
     defaultAnonymous: false,
     ageRange: '',
     city: ''
+  });
+  const [userAccount, setUserAccount] = useState<UserAccount>(() => {
+    if (typeof window === 'undefined') {
+      return {
+        id: Date.now().toString(),
+        isAnonymous: true,
+        createdAt: new Date()
+      };
+    }
+    try {
+      const saved = localStorage.getItem('storyCircleAccount');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Omit<UserAccount, 'createdAt'> & { createdAt?: string };
+        return {
+          id: parsed.id,
+          email: parsed.email,
+          isAnonymous: parsed.isAnonymous,
+          createdAt: parsed.createdAt ? new Date(parsed.createdAt) : new Date()
+        };
+      }
+    } catch {
+      // ignore malformed storage
+    }
+    return {
+      id: Date.now().toString(),
+      isAnonymous: true,
+      createdAt: new Date()
+    };
+  });
+  const [isFirstBoot, setIsFirstBoot] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return !localStorage.getItem('storyCircleHasBooted');
   });
 
   const updateStory = (updates: Partial<Story>) => {
@@ -67,11 +111,50 @@ export default function App() {
 
   const navigateTo = (screen: Screen) => {
     setCurrentScreen(screen);
+    setNavigationHistory((history) => {
+      if (screen === 'welcome') {
+        return ['welcome'];
+      }
+      return [...history, screen];
+    });
+  };
+
+  const navigateBack = () => {
+    setNavigationHistory((history) => {
+      if (history.length <= 1) {
+        setCurrentScreen('welcome');
+        return ['welcome'];
+      }
+      const nextHistory = history.slice(0, -1);
+      setCurrentScreen(nextHistory[nextHistory.length - 1]);
+      return nextHistory;
+    });
+  };
+
+  const markBooted = () => {
+    if (!isFirstBoot) return;
+    setIsFirstBoot(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('storyCircleHasBooted', 'true');
+    }
   };
 
   const handleStartRecording = () => {
+    markBooted();
     setCurrentStory(null);
     navigateTo('recording');
+  };
+
+  const handleListenToStories = () => {
+    markBooted();
+    setStoryWallTab('public-stories');
+    navigateTo('story-wall');
+  };
+
+  const handleMyStories = () => {
+    markBooted();
+    setStoryWallTab('my-stories');
+    navigateTo('story-wall');
   };
 
   const generateStoryFromTranscript = async (transcriptValue: string, snapshot?: Partial<Story>) => {
@@ -145,20 +228,30 @@ export default function App() {
     void generateStoryFromTranscript(transcript, baseStory);
   };
 
+  const buildShareLink = (story: Story) => {
+    if (story.shareToken && story.shareToken.startsWith('http')) {
+      return story.shareToken;
+    }
+    const token = story.shareToken || story.id;
+    return token ? `storycircle.app/story/${token}` : null;
+  };
+
   const handleSaveStory = async (story: Partial<Story>, shareType: 'private' | 'link' | 'public') => {
     const finalStory: Story = {
       id: story.id || Date.now().toString(),
       title: story.title || 'Untitled Story',
       transcript: story.transcript || '',
-      ageRange: userSettings.ageRange,
-      city: userSettings.city,
+      ageRange: story.ageRange || userSettings.ageRange,
+      city: story.city || userSettings.city,
       tags: story.tags || [],
-      isAnonymous: userSettings.defaultAnonymous,
+      isAnonymous: story.isAnonymous ?? userSettings.defaultAnonymous,
       reactions: story.reactions || { moved: 0, thankYou: 0, favorite: 0 },
       audioUrl: story.audioUrl,
       createdAt: story.createdAt || new Date(),
       backendId: story.backendId,
-      rawTranscript: story.rawTranscript || story.transcript
+      rawTranscript: story.rawTranscript || story.transcript,
+      abstract: story.abstract ?? null,
+      shareToken: story.shareToken ?? null
     };
 
     const visibility =
@@ -184,10 +277,34 @@ export default function App() {
     }
 
     if (shareType === 'public' || shareType === 'link') {
+      setLastShareLink(buildShareLink(finalStory));
       navigateTo('share-confirmation');
     } else {
+      setLastShareLink(null);
       navigateTo('welcome');
     }
+  };
+
+  const handleCreateAccount = () => {
+    const now = Date.now();
+    const newAccount: UserAccount = {
+      id: now.toString(),
+      email: `user${now}@storycircle.app`,
+      isAnonymous: false,
+      createdAt: new Date()
+    };
+    setUserAccount(newAccount);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'storyCircleAccount',
+        JSON.stringify({ ...newAccount, createdAt: newAccount.createdAt.toISOString() })
+      );
+    }
+    markBooted();
+  };
+
+  const handleSkipAccount = () => {
+    markBooted();
   };
 
   const handleViewStory = (storyId: string) => {
@@ -201,15 +318,20 @@ export default function App() {
         return (
           <WelcomeScreen
             onTellStory={handleStartRecording}
-            onListenToStories={() => navigateTo('story-wall')}
+            onListenToStories={handleListenToStories}
+            onMyStories={handleMyStories}
             onOpenSettings={() => navigateTo('settings')}
+            isFirstBoot={isFirstBoot}
+            hasAccount={!userAccount.isAnonymous}
+            onCreateAccount={handleCreateAccount}
+            onSkipAccount={handleSkipAccount}
           />
         );
       case 'recording':
         return (
           <RecordingScreen
             onFinish={handleFinishRecording}
-            onCancel={() => navigateTo('welcome')}
+            onCancel={navigateBack}
           />
         );
       case 'review':
@@ -217,7 +339,7 @@ export default function App() {
           <ReviewScreen
             story={currentStory}
             onSave={handleSaveStory}
-            onCancel={() => navigateTo('welcome')}
+            onCancel={navigateBack}
             onUpdateStory={updateStory}
             isStoryGenerating={isStoryGenerating}
             storyGenerationError={storyGenerationError}
@@ -231,7 +353,8 @@ export default function App() {
       case 'share-confirmation':
         return (
           <ShareConfirmationScreen
-            onGoToStoryWall={() => navigateTo('story-wall')}
+            shareLink={lastShareLink}
+            onGoToStoryWall={handleListenToStories}
             onBackToHome={() => navigateTo('welcome')}
           />
         );
@@ -239,30 +362,45 @@ export default function App() {
         return (
           <StoryWallScreen
             onViewStory={handleViewStory}
-            onBack={() => navigateTo('welcome')}
+            onBack={navigateBack}
+            defaultTab={storyWallTab}
           />
         );
       case 'story-detail':
         return (
           <StoryDetailScreen
             storyId={selectedStoryId}
-            onBack={() => navigateTo('story-wall')}
+            onBack={navigateBack}
             onListenToSimilar={(id) => handleViewStory(id)}
+            onHome={() => navigateTo('welcome')}
           />
         );
       case 'settings':
         return (
           <SettingsScreen
             settings={userSettings}
+            account={userAccount}
             onSave={(settings) => {
               setUserSettings(settings);
-              navigateTo('welcome');
+              navigateBack();
             }}
-            onCancel={() => navigateTo('welcome')}
+            onCancel={navigateBack}
+            onCreateAccount={handleCreateAccount}
           />
         );
       default:
-        return <WelcomeScreen onTellStory={handleStartRecording} onListenToStories={() => navigateTo('story-wall')} onOpenSettings={() => navigateTo('settings')} />;
+        return (
+          <WelcomeScreen
+            onTellStory={handleStartRecording}
+            onListenToStories={handleListenToStories}
+            onMyStories={handleMyStories}
+            onOpenSettings={() => navigateTo('settings')}
+            isFirstBoot={isFirstBoot}
+            hasAccount={!userAccount.isAnonymous}
+            onCreateAccount={handleCreateAccount}
+            onSkipAccount={handleSkipAccount}
+          />
+        );
     }
   };
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConversation } from '@elevenlabs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Mic, Square, Play } from 'lucide-react';
+import { motion } from 'motion/react';
 import { env } from '../lib/env';
-import { Orb, type AgentState } from './ui/orb';
+import type { AgentState } from './ui/orb';
 import { Button } from './ui/button';
 
 interface RecordingScreenProps {
@@ -13,6 +14,14 @@ interface RecordingScreenProps {
 const SAMPLE_TRANSCRIPT = `I remember it was a beautiful summer day in 1965. I was just 23 years old, and I had just started my first teaching job at the elementary school in my hometown. The children were so eager to learn, and I felt this overwhelming sense of purpose. My mother had always told me that teaching was a noble profession, and standing there in that classroom, I finally understood what she meant. The smell of chalk dust, the sound of children's laughter - these became the soundtrack of my life for the next 40 years. I wouldn't trade those memories for anything in the world.`;
 
 type ConversationState = 'idle' | 'connecting' | 'recording' | 'paused';
+
+const PROMPTS = [
+  "Let's capture a memory. Tell me about a meaningful moment.",
+  'Who was there with you?',
+  'How old were you then?',
+  'What did it feel like?',
+  'What happened next?'
+];
 
 const formatDuration = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
@@ -28,7 +37,12 @@ export function RecordingScreen({ onFinish, onCancel }: RecordingScreenProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [waveformData, setWaveformData] = useState<number[]>(() => new Array(40).fill(0));
+  const [currentPrompt, setCurrentPrompt] = useState<string>(PROMPTS[0]);
+  const [showPrompt, setShowPrompt] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const appendUserTranscript = useCallback((snippet?: string) => {
     const trimmed = snippet?.trim();
@@ -36,7 +50,7 @@ export function RecordingScreen({ onFinish, onCancel }: RecordingScreenProps) {
     setTranscript((current) => (current ? `${current} ${trimmed}` : trimmed));
   }, []);
 
-  const { startSession, endSession, status, getInputVolume, getOutputVolume } = useConversation({
+  const { startSession, endSession, status } = useConversation({
     onMessage: ({ message, source }) => {
       if (source === 'user') {
         appendUserTranscript(message);
@@ -122,9 +136,66 @@ export function RecordingScreen({ onFinish, onCancel }: RecordingScreenProps) {
   }, [status]);
 
   useEffect(() => {
+    if (status === 'connected') {
+      waveTimerRef.current = setInterval(() => {
+        setWaveformData((prev) => {
+          const next = [...prev];
+          next.shift();
+          next.push(Math.random() * 0.8 + 0.2);
+          return next;
+        });
+      }, 120);
+    } else {
+      if (waveTimerRef.current) {
+        clearInterval(waveTimerRef.current);
+        waveTimerRef.current = null;
+      }
+      setWaveformData(new Array(40).fill(0));
+    }
+
+    return () => {
+      if (waveTimerRef.current) {
+        clearInterval(waveTimerRef.current);
+        waveTimerRef.current = null;
+      }
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (promptTimerRef.current) {
+      clearTimeout(promptTimerRef.current);
+      promptTimerRef.current = null;
+    }
+
+    if (conversationState === 'recording') {
+      setShowPrompt(false);
+      promptTimerRef.current = setTimeout(() => {
+        const nextPrompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+        setCurrentPrompt(nextPrompt);
+        setShowPrompt(true);
+      }, 8000);
+    } else if (conversationState === 'paused' || conversationState === 'idle') {
+      setShowPrompt(true);
+    }
+
+    return () => {
+      if (promptTimerRef.current) {
+        clearTimeout(promptTimerRef.current);
+        promptTimerRef.current = null;
+      }
+    };
+  }, [conversationState]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (waveTimerRef.current) {
+        clearInterval(waveTimerRef.current);
+      }
+      if (promptTimerRef.current) {
+        clearTimeout(promptTimerRef.current);
       }
       stopSessionRef.current?.();
     };
@@ -255,89 +326,125 @@ export function RecordingScreen({ onFinish, onCancel }: RecordingScreenProps) {
     return 'Tap Start to begin talking to your StoryCircle guide.';
   }, [agentState, canStart, conversationState, error, status, transcript]);
 
-  const primaryActionLabel = useMemo(() => {
-    if (isConnected) {
-      return 'Pause Recording';
-    }
-    if (conversationState === 'paused') {
-      return 'Resume Recording';
-    }
-    return 'Start Recording';
-  }, [conversationState, isConnected]);
-
-  const statusColor = error ? 'text-red-700' : 'text-amber-800/80';
+  const canFinish = conversationState === 'paused' || elapsedSeconds > 10 || Boolean(transcript.trim());
+  const recordButtonLabel = isConnected ? 'Pause recording' : conversationState === 'paused' ? 'Resume recording' : 'Start recording';
+  const recordHelper = conversationState === 'recording'
+    ? "I'll guide you if you pause"
+    : conversationState === 'paused'
+      ? 'Tap to continue'
+      : 'Tap to start recording';
 
   return (
-    <div className="min-h-screen flex flex-col p-6">
-      <div className="flex items-center mb-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex flex-col p-6"
+    >
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex items-center mb-8"
+      >
         <button
           onClick={handleBack}
-          className="p-3 rounded-full hover:bg-white/60 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-white/60 transition-colors"
           aria-label="Go back"
+          type="button"
         >
           <ArrowLeft className="w-7 h-7 text-amber-900" />
+          <span className="text-amber-900">GO BACK</span>
         </button>
-        <h2 className="flex-1 text-center text-amber-900 -ml-12">Record Your Story</h2>
-      </div>
+        <h2 className="flex-1 text-center text-amber-900 -mr-24">Record Your Story</h2>
+      </motion.div>
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
-        <p className="text-amber-800/80 text-center mb-6 px-6">
-          Use the StoryCircle guide to share your story in your own words. The orb shows when we&apos;re
-          listening or speaking back to you.
-        </p>
-
-        <div className="text-amber-900 mb-8 text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-amber-900 mb-8 text-center"
+        >
           <div className="inline-block px-6 py-3 bg-white/80 rounded-full shadow-md font-semibold">
             {formatDuration(elapsedSeconds)}
           </div>
-          {sessionId ? (
-            <p className="text-xs text-amber-800/70 mt-2">Session: {sessionId}</p>
-          ) : null}
+        </motion.div>
+
+        <div className="w-full h-24 mb-8 flex items-center justify-center gap-1 px-4">
+          {waveformData.map((height, index) => (
+            <div
+              key={index}
+              className="flex-1 bg-amber-600 rounded-full transition-all duration-100"
+              style={{ height: `${height * 100}%`, opacity: isConnected ? 1 : 0.3 }}
+            />
+          ))}
         </div>
 
-        <div className="mb-8 w-full flex justify-center">
-          <Orb
-            className="h-56 w-56 drop-shadow-xl"
-            agentState={agentState}
-            getInputVolume={getInputVolume}
-            getOutputVolume={getOutputVolume}
-            colors={['#f59e0b', '#f97316']}
-          />
-        </div>
+        {showPrompt && (
+          <div className="mb-8 w-full">
+            <div className={`bg-white rounded-2xl p-6 shadow-lg border-2 ${error ? 'border-red-200 text-red-800 bg-red-50' : 'border-amber-200 text-amber-900'}`}>
+              <p className="text-center">{error ? statusMessage : currentPrompt}</p>
+            </div>
+          </div>
+        )}
 
-        <p className={`text-center mb-6 min-h-[48px] px-6 ${statusColor}`}>{statusMessage}</p>
+        {!showPrompt && (
+          <p className={`text-center mb-8 ${error ? 'text-red-700' : 'text-amber-800/80'}`}>{statusMessage}</p>
+        )}
 
-        <div className="w-full space-y-3 mb-8">
-          <Button
+        <motion.div
+          initial={{ scale: 0.7, y: 50 }}
+          animate={{ scale: 1, y: 0 }}
+          transition={{ delay: 0.4, type: 'spring', stiffness: 200 }}
+          className="mb-6"
+        >
+          <button
             onClick={handleToggleConversation}
-            size="lg"
-            className="w-full h-14 bg-amber-600 hover:bg-amber-700 text-white shadow-lg disabled:opacity-60 disabled:pointer-events-none"
             disabled={isBusy || (!canStart && !isConnected)}
+            className={`w-32 h-32 rounded-full shadow-2xl flex items-center justify-center transition-all ${
+              isConnected
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : conversationState === 'paused'
+                  ? 'bg-amber-500 hover:bg-amber-600'
+                  : 'bg-amber-600 hover:bg-amber-700'
+            } ${isBusy ? 'opacity-70 pointer-events-none' : ''}`}
+            aria-label={recordButtonLabel}
+            type="button"
           >
-            {primaryActionLabel}
-          </Button>
+            {isConnected ? (
+              <Square className="w-12 h-12 text-white" fill="white" />
+            ) : conversationState === 'paused' ? (
+              <Play className="w-12 h-12 text-white" fill="white" />
+            ) : (
+              <Mic className="w-12 h-12 text-white" />
+            )}
+          </button>
+        </motion.div>
 
-          <Button
-            onClick={handleFinishRecording}
-            size="lg"
-            variant="outline"
-            className="w-full h-14 border-amber-600 text-amber-900"
-            disabled={isBusy}
-          >
-            Finish Recording
-          </Button>
+        <p className="text-amber-800/70 text-center mb-8">{recordHelper}</p>
 
-          <Button
-            onClick={handleUseSample}
-            size="lg"
-            variant="ghost"
-            className="w-full h-14"
-            disabled={isBusy}
-          >
-            Use Sample Story Instead
-          </Button>
-        </div>
+        {canFinish && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full space-y-3">
+            <Button
+              onClick={handleFinishRecording}
+              size="lg"
+              className="w-full h-16 bg-amber-600 hover:bg-amber-700 text-white shadow-xl"
+              disabled={isBusy}
+            >
+              Finish Story
+            </Button>
+            <button
+              onClick={handleUseSample}
+              className="w-full text-center text-amber-800/80 hover:text-amber-900 underline-offset-4 hover:underline"
+              type="button"
+              disabled={isBusy}
+            >
+              Use sample story instead
+            </button>
+          </motion.div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }

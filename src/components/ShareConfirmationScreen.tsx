@@ -5,13 +5,16 @@ import { toast } from 'sonner@2.0.3';
 interface ShareConfirmationScreenProps {
   onGoToStoryWall: () => void;
   onBackToHome: () => void;
+  shareLink?: string | null;
 }
 
-export function ShareConfirmationScreen({ onGoToStoryWall, onBackToHome }: ShareConfirmationScreenProps) {
-  const shareLink = 'storycircle.app/story/abc123xyz';
+export function ShareConfirmationScreen({ onGoToStoryWall, onBackToHome, shareLink }: ShareConfirmationScreenProps) {
+  const fallback = 'storycircle.app/story/abc123xyz';
+  const sanitizedLink = (shareLink || fallback).replace(/^https?:\/\//, '');
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://${shareLink}`);
+    const value = shareLink?.startsWith('http') ? shareLink : `https://${sanitizedLink}`;
+    navigator.clipboard.writeText(value);
     toast.success('Link copied to clipboard!');
   };
 
@@ -35,7 +38,7 @@ export function ShareConfirmationScreen({ onGoToStoryWall, onBackToHome }: Share
         <div className="bg-white rounded-xl p-5 shadow-md border-2 border-amber-200">
           <p className="text-amber-800/70 mb-3">Share this link:</p>
           <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg mb-4">
-            <code className="flex-1 text-amber-900 break-all">{shareLink}</code>
+            <code className="flex-1 text-amber-900 break-all">{sanitizedLink}</code>
           </div>
           <Button
             onClick={handleCopyLink}

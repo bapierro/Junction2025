@@ -3,7 +3,7 @@ import { ArrowLeft, Play, Pause, Share2, Lock, Globe } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
+import { Orb } from './ui/orb';
 import type { Story } from '../App';
 
 interface ReviewScreenProps {
@@ -168,6 +168,19 @@ export function ReviewScreen({
         {/* Sharing Options */}
         <div className="pt-4 space-y-3">
           <p className="text-amber-900">How would you like to share?</p>
+
+          <div className="bg-white rounded-2xl p-6 border-2 border-amber-200 text-center shadow-sm flex flex-col items-center">
+            <div className="w-40 h-40 flex items-center justify-center">
+              <Orb
+                className="h-40 w-40"
+                agentState={isStoryGenerating ? 'thinking' : 'listening'}
+                colors={[ '#f59e0b', '#f97316' ]}
+              />
+            </div>
+            <p className="text-amber-800/80">
+              The ElevenLabs guide is standing by while you choose how to share your story.
+            </p>
+          </div>
           
           <Button
             onClick={() => handleSave('private')}

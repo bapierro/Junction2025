@@ -79,3 +79,34 @@ It took us five years to finish, but when we finally moved in, it was perfect. N
     createdAt: new Date('2024-02-15')
   }
 ];
+
+export const MY_STORIES: Story[] = [
+  {
+    id: '101',
+    title: 'Saturdays at the Market',
+    transcript:
+      `Every Saturday for thirty years I opened my small flower stall before sunrise. The regulars would wander over with their coffee and I would tuck a sprig of lavender into their bags. When my granddaughter was born she would nap behind the counter while I arranged peonies. Those mornings taught me how community is stitched together—one small kindness at a time.`,
+    ageRange: '76',
+    city: 'Lisbon',
+    tags: ['Work', 'Family'],
+    isAnonymous: false,
+    reactions: { moved: 42, thankYou: 28, favorite: 18 },
+    createdAt: new Date('2024-02-20'),
+    audioUrl: undefined,
+    shareToken: 'markets-101'
+  },
+  {
+    id: '102',
+    title: 'Letters Across the Ocean',
+    transcript:
+      `My brother left for Canada in 1954 and for years our only connection was handwritten letters. I kept them all in a biscuit tin. When phones finally became affordable, we still wrote because ink captured the tiny details. Last autumn I finally visited him and we opened that tin together. We laughed, we cried, and felt like no time had passed at all.`,
+    ageRange: '82',
+    city: 'Naples',
+    tags: ['Family', 'Migration'],
+    isAnonymous: true,
+    reactions: { moved: 67, thankYou: 41, favorite: 23 },
+    createdAt: new Date('2024-03-02'),
+    audioUrl: undefined,
+    shareToken: 'letters-102'
+  }
+];
